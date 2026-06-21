@@ -13,10 +13,7 @@ import 'auth_service.dart';
 /// - spin: 转盘观看广告获得额外抽奖机会
 /// - task: 完成任务观看广告领取奖励
 ///
-/// 真实SDK预留：
-/// - Android: 优量汇（腾讯广告联盟）
-/// - HarmonyOS: 华为 Ads Kit
-/// - iOS: 可预留穿山甲或其他平台
+/// 正式广告通过平台适配层接入；未配置服务商时不会发放奖励。
 class AdService {
   /// 单例实例
   static final AdService _instance = AdService._internal();
@@ -37,10 +34,7 @@ class AdService {
     if (Constants.TEST_MODE) {
       return true;
     }
-    // TODO: 接入真实SDK时，替换为平台广告加载状态检查
-    // Android: 优量汇 GDTAdManager.checkRewardAdReady()
-    // HarmonyOS: 华为 Ads Kit isAdLoaded()
-    return true;
+    return false;
   }
 
   /// 展示激励视频广告
@@ -88,44 +82,13 @@ class AdService {
         return;
       }
 
-      // 真实SDK模式（预留接口）
-      // TODO: 接入真实广告SDK时，替换以下代码
-      //
-      // Android 优量汇集成示例：
-      // import 'package:gdt_ads/gdt_ads.dart';
-      // final result = await GdtAds.showRewardVideoAd(
-      //   posId: 'YOUR_AD_POS_ID',
-      //   onReward: onReward,
-      // );
-      //
-      // HarmonyOS 华为 Ads Kit 集成示例：
-      // import 'package:huawei_ads/huawei_ads.dart';
-      // final result = await HuaweiAds.showRewardAd(
-      //   adId: 'YOUR_AD_ID',
-      //   onReward: onReward,
-      // );
-
-      // 模拟真实SDK调用（占位）
       final adReady = await isAdReady();
       if (!adReady) {
-        _isShowingAd = false;
         if (context != null && context.mounted) {
-          _showErrorSnackBar(context, '广告加载中，请稍后重试');
+          _showErrorSnackBar(context, '广告服务尚未配置');
         }
         return;
       }
-
-      // 真实广告播放（此处应调用SDK方法）
-      // await _showRealRewardAd(adType, onReward);
-
-      // 临时用模拟代替（SDK未接入时）
-      if (context != null && context.mounted) {
-        await _showSimulatedAdDialog(context, adType);
-      }
-      await _reportAdReward(adType);
-      await AuthService().refreshUser();
-      onReward();
-      _todayAdCount++;
     } catch (e) {
       // 广告播放失败，释放锁并提示用户
       if (context != null && context.mounted) {

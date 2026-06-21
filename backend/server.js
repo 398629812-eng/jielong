@@ -17,16 +17,36 @@ const { success } = require('./src/utils/response');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
+const trustProxyHops = Number.parseInt(process.env.TRUST_PROXY || '0', 10);
+const allowedOrigins = (process.env.CORS_ORIGINS ||
+  'http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+if (trustProxyHops > 0) {
+  app.set('trust proxy', trustProxyHops);
+}
 
 // 1. 全局中间件
 // 解析 JSON 请求体
 app.use(express.json());
 // 解析 URL 编码表单（兼容部分旧客户端）
 app.use(express.urlencoded({ extended: true }));
-// 跨域支持（允许所有来源，生产环境可限制为特定域名）
-app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
-// 安全头（XSS 过滤、Content-Security-Policy 等）
-app.use(helmet({ contentSecurityPolicy: false }));
+// 浏览器客户端只允许来自配置中的可信来源；原生客户端不携带 Origin。
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    const err = new Error('Origin not allowed');
+    err.status = 403;
+    return callback(err);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+}));
+app.use(helmet());
 // 通用频率限制（防止恶意请求）
 app.use(generalLimiter);
 
@@ -59,7 +79,9 @@ app.use((req, res) => {
 // 5. 全局错误处理
 app.use((err, req, res, next) => {
   console.error('服务器错误:', err.stack);
-  res.status(500).json({ code: 500, message: '服务器内部错误', data: null });
+  const status = err.status || 500;
+  const message = status === 403 ? '请求来源不受信任' : '服务器内部错误';
+  res.status(status).json({ code: status, message, data: null });
 });
 
 // 6. 启动服务
@@ -67,13 +89,13 @@ async function startServer() {
   // 先测试数据库连接
   const dbOk = await testConnection();
   if (!dbOk) {
-    console.warn('⚠️ 数据库连接失败，服务将继续启动，但数据库功能可能不可用');
+    console.error('数据库连接失败，服务未启动');
+    process.exitCode = 1;
+    return;
   }
 
-  app.listen(PORT, () => {
-    console.log(`🚀 成语接龙后端服务已启动，监听端口 ${PORT}`);
-    console.log(`📖 API 文档：http://localhost:${PORT}/api/config（获取配置）`);
-    console.log(`❤️  健康检查：http://localhost:${PORT}/health`);
+  app.listen(PORT, HOST, () => {
+    console.log(`成语接龙后端服务已启动：http://${HOST}:${PORT}`);
   });
 }
 

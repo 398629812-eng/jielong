@@ -374,25 +374,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              // 微信登录按钮（预留，灰色占位）
-              SizedBox(
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: null, // 预留接口，未接入SDK
-                  icon: const Icon(Icons.wechat, color: Colors.grey),
-                  label: const Text(
-                    '微信登录（即将上线）',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.grey),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
               // 游客登录按钮
               SizedBox(
                 height: 48,

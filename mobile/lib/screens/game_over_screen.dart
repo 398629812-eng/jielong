@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:animated_text_kit/animated_text_kit.dart';
 import '../models/game_state.dart';
 import '../utils/constants.dart';
 import 'home_screen.dart';
@@ -49,25 +48,22 @@ class _GameOverScreenState extends State<GameOverScreen> {
               const SizedBox(height: 24),
               // 新纪录动画（如果是新纪录）
               if (isNewRecord) ...[
-                AnimatedTextKit(
-                  animatedTexts: [
-                    ColorizeAnimatedText(
-                      '恭喜刷新纪录！',
-                      textStyle: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      colors: [
-                        Constants.GOLD,
-                        Constants.GOLD_DARK,
-                        Constants.ORANGE,
-                        Constants.GOLD,
-                      ],
-                      speed: const Duration(milliseconds: 400),
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [
+                      Constants.GOLD_DARK,
+                      Constants.ORANGE,
+                      Constants.GOLD,
+                    ],
+                  ).createShader(bounds),
+                  child: const Text(
+                    '恭喜刷新纪录！',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
-                  isRepeatingAnimation: false,
-                  totalRepeatCount: 1,
+                  ),
                 ),
                 const SizedBox(height: 16),
               ],

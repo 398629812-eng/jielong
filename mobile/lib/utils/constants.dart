@@ -7,7 +7,10 @@ class Constants {
   // ==================== 测试模式开关 ====================
   /// 测试模式开关：true时广告直接跳过播放，模拟成功
   /// 用于开发调试和商店审核测试，生产环境应设为false
-  static const bool TEST_MODE = true;
+  static const bool TEST_MODE = bool.fromEnvironment(
+    'TEST_MODE',
+    defaultValue: true,
+  );
 
   // ==================== API 配置 ====================
   /// 后端 API 基础地址。可通过 --dart-define=API_BASE_URL=... 注入。
@@ -98,17 +101,17 @@ class Constants {
   static const double FONT_TINY = 12.0;
 
   // ==================== 难度配置 ====================
-  /// 简单难度：每轮60秒，AI随机选择可接成语
+  /// 简单难度：每轮60秒，系统随机选择可接成语
   static const int EASY_SECONDS = 60;
   static const String EASY_NAME = '简单';
   static const String EASY_DESC = '60秒/轮 · 轻松接龙';
 
-  /// 普通难度：每轮30秒，AI优先选择尾字生僻的成语
+  /// 普通难度：每轮30秒，系统优先选择尾字生僻的成语
   static const int NORMAL_SECONDS = 30;
   static const String NORMAL_NAME = '普通';
   static const String NORMAL_DESC = '30秒/轮 · 正常挑战';
 
-  /// 困难难度：每轮15秒，AI深度计算选择最难接的成语
+  /// 困难难度：每轮15秒，系统计算后选择最难接的成语
   static const int HARD_SECONDS = 15;
   static const String HARD_NAME = '困难';
   static const String HARD_DESC = '15秒/轮 · 极限挑战';

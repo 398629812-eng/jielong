@@ -1,6 +1,6 @@
 # 成语接龙 — 休闲益智游戏项目
 
-> 一款支持 Android + HarmonyOS 双平台的成语接龙休闲游戏，通过激励视频广告变现，用户赚取金币可提现。
+> 一款面向 Android 和 Web 的成语接龙休闲游戏，当前提供广告、金币与提现的完整测试流程。
 
 ---
 
@@ -8,7 +8,7 @@
 
 | 模块 | 技术栈 | 说明 |
 |------|--------|------|
-| 客户端 (Android + HarmonyOS) | Flutter 3.x | 一套代码双平台运行，支持鸿蒙适配层 |
+| 客户端 (Android + Web) | Flutter 3.x | 一套代码覆盖移动端与浏览器测试 |
 | 后端 API | Node.js + Express + MySQL | RESTful API，JWT 认证，防刷机制 |
 | 管理后台 | React 18 + Ant Design 5 + Vite | 运营管理系统，数据可视化 |
 | 成语数据库 | JSON + Python | 10,010 条常用成语，100% 接龙覆盖率 |
@@ -37,7 +37,7 @@ cd admin
 npm install
 npm run dev
 # 打开 http://localhost:5173
-# 管理员账号需在部署后通过受控流程创建
+# 管理员账号需在部署后执行 npm run create:admin 创建
 ```
 
 ### 3. Flutter 客户端
@@ -68,7 +68,7 @@ flutter build apk --release
 
 ```
 jielong/
-├── AGENT_SPEC.md          # 架构设计与接口规范
+├── docs/SYSTEM_SPEC.md    # 系统设计与接口规范
 ├── README.md              # 本文件
 ├── backend/               # Node.js 后端
 │   ├── server.js
@@ -115,7 +115,7 @@ jielong/
 
 ### 游戏玩法
 - 三种难度：简单（60秒）、普通（30秒）、困难（15秒）
-- AI 智能接龙：简单随机、普通生僻尾字、困难压缩可选范围
+- 系统自动接龙：简单随机、普通生僻尾字、困难压缩可选范围
 - 实时验证：本地成语库 O(1) 查询，首字拼音匹配（支持同音不同调）
 - 提示系统：消耗提示次数显示可接成语，次数需看广告获取
 - 续命机制：失败后可看广告继续，每局限1次
@@ -140,9 +140,8 @@ jielong/
 | 平台 | SDK | 文件 | 说明 |
 |------|-----|------|------|
 | Android | 优量汇（腾讯） | `mobile/lib/services/ad_service.dart` | 预留接口，替换模拟实现即可 |
-| HarmonyOS | 华为 Ads Kit | `mobile/lib/services/ad_service.dart` | 预留接口，替换模拟实现即可 |
 
-修改 `mobile/lib/utils/constants.dart` 中 `TEST_MODE = false` 启用真实广告。
+构建时使用 `--dart-define=TEST_MODE=false` 关闭模拟流程；接入并验收真实广告 SDK 后才可用于生产。
 
 ---
 
@@ -184,16 +183,6 @@ jielong/
 ## 部署指南
 
 详见 `docs/DEPLOY.md`。
-
----
-
-## 开发团队
-
-本项目由多智能体并行协作开发完成，包含：
-- 后端 API（Node.js + MySQL）
-- Flutter 客户端（Android + HarmonyOS）
-- React 管理后台（Ant Design）
-- 成语数据库（10,010 条，覆盖率 100%）
 
 ---
 

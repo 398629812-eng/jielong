@@ -3,7 +3,7 @@ import { message } from 'antd';
 import { getToken, logout } from '../utils/auth';
 
 const request = axios.create({
-  baseURL: 'http://localhost:3000/api/admin',
+  baseURL: import.meta.env.VITE_ADMIN_API_BASE_URL || 'http://localhost:3000/api/admin',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

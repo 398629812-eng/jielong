@@ -29,11 +29,11 @@ class IdiomService {
   final Map<String, List<Idiom>> _firstPinyinNoToneIndex = {};
 
   /// 按尾字带声调拼音分组成语索引：{ 尾字拼音: [Idiom, ...] }
-  /// 用于AI选词时计算后续可选范围（频率分析）
+  /// 用于选词时计算后续可选范围（频率分析）
   final Map<String, List<Idiom>> _lastPinyinIndex = {};
 
   /// 按尾字无调拼音分组成语索引：{ 尾字无调拼音: [Idiom, ...] }
-  /// 用于同音不同调模式下AI选词
+  /// 用于同音不同调模式下选词
   final Map<String, List<Idiom>> _lastPinyinNoToneIndex = {};
 
   /// 随机数生成器（用于随机选词）
@@ -68,7 +68,7 @@ class IdiomService {
             )
             .add(idiom);
 
-        // 4. 构建尾字拼音索引（AI选词频率分析）
+        // 4. 构建尾字拼音索引（选词频率分析）
         _lastPinyinIndex.putIfAbsent(idiom.lastPinyin, () => []).add(idiom);
 
         // 5. 构建尾字无调拼音索引
@@ -108,7 +108,7 @@ class IdiomService {
   ///
   /// 使用场景：
   /// 1. 验证玩家输入时检查是否匹配
-  /// 2. AI选词时获取候选列表
+  /// 2. 系统选词时获取候选列表
   /// 3. 获取提示时返回可选成语
   List<Idiom> findNextIdioms(
     String tailPinyin, {
@@ -256,9 +256,9 @@ class IdiomService {
     return _idiomMap.containsKey(idiom.trim());
   }
 
-  // ==================== AI 选词逻辑（难度对应） ====================
+  // ==================== 系统选词逻辑（难度对应） ====================
 
-  /// 简单难度 AI 选词策略：从可接列表中随机选择
+  /// 简单难度系统选词策略：从可接列表中随机选择
   ///
   /// [tailPinyin] 上一个成语的尾字拼音
   /// [usedIdioms] 已使用成语集合
@@ -266,7 +266,7 @@ class IdiomService {
   /// 返回：选中的成语，或null表示无词可接
   ///
   /// 策略说明：
-  /// 简单模式给玩家更多选择空间，AI随机选择不刻意刁难
+  /// 简单模式给玩家更多选择空间，系统随机选择不刻意刁难
   /// 增加玩家成功接龙的概率，适合新手体验
   Idiom? selectEasyIdiom(
     String tailPinyin,
@@ -288,7 +288,7 @@ class IdiomService {
     return available[_random.nextInt(available.length)];
   }
 
-  /// 普通难度 AI 选词策略：优先选择尾字拼音出现频率低的成语
+  /// 普通难度选词策略：优先选择尾字拼音出现频率低的成语
   ///
   /// [tailPinyin] 上一个成语的尾字拼音
   /// [usedIdioms] 已使用成语集合
@@ -296,9 +296,9 @@ class IdiomService {
   /// 返回：选中的成语，或null表示无词可接
   ///
   /// 策略说明：
-  /// 普通模式AI会优先选择"生僻"的成语，即尾字拼音对应的首字拼音出现频率低的成语
+  /// 普通模式优先选择"生僻"的成语，即尾字拼音对应的首字拼音出现频率低的成语
   /// 这样玩家后续可接的成语范围会变小，增加挑战性
-  /// 例如：AI选择尾字为"殇(shāng)"的成语，因为以"shang"开头的成语较少
+  /// 例如：选择尾字为"殇(shāng)"的成语，因为以"shang"开头的成语较少
   Idiom? selectNormalIdiom(
     String tailPinyin,
     Set<String> usedIdioms, {
@@ -338,7 +338,7 @@ class IdiomService {
     return topCandidates[_random.nextInt(topCandidates.length)];
   }
 
-  /// 困难难度 AI 选词策略：深度计算，选择使玩家后续可选范围最小的成语
+  /// 困难难度选词策略：选择使玩家后续可选范围最小的成语
   ///
   /// [tailPinyin] 上一个成语的尾字拼音
   /// [usedIdioms] 已使用成语集合
@@ -346,10 +346,10 @@ class IdiomService {
   /// 返回：选中的成语，或null表示无词可接
   ///
   /// 策略说明：
-  /// 困难模式AI会深度计算每个候选成语的"后续可选范围"
+  /// 困难模式会计算每个候选成语的"后续可选范围"
   /// 选择使玩家后续可选成语数量最少的那个（最刁钻的）
   /// 计算量较大，但能给高难度玩家最大挑战
-  /// 为防止计算耗时过长，采用两层评估（评估AI下一个词后的玩家可选数）
+  /// 为防止计算耗时过长，采用两层评估（评估系统出词后的玩家可选数）
   Idiom? selectHardIdiom(
     String tailPinyin,
     Set<String> usedIdioms, {
@@ -369,7 +369,7 @@ class IdiomService {
 
     // 困难模式：深度计算，评估每个候选成语的"难度值"
     // 难度值 = 玩家接该成语后，后续可接成语的数量（越少越难）
-    // 采用两层评估：评估AI出词后，玩家可能接的成语再之后的AI可选数
+    // 采用两层评估：评估系统出词后，玩家可能接的成语及后续可选数
     // 使用Map缓存计算结果，避免重复计算
     final difficultyMap = <Idiom, int>{};
 
@@ -402,7 +402,7 @@ class IdiomService {
   // ==================== 辅助方法 ====================
 
   /// 获取某个拼音作为首字时，对应成语的数量（频率分析）
-  /// 用于普通难度AI评估生僻程度
+  /// 用于普通难度评估生僻程度
   ///
   /// [pinyin] 拼音（带声调或不带声调）
   /// [allowDifferentTone] 是否使用无调索引

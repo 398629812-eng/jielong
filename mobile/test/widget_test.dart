@@ -10,7 +10,8 @@ void main() {
 
     // Verify MaterialApp exists and has the expected title.
     expect(find.byType(MaterialApp), findsOneWidget);
-    final MaterialApp app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    final MaterialApp app =
+        tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(app.title, '成语接龙');
 
     // Unmount the widget tree to stop animations and timers.

@@ -10,6 +10,7 @@ const { body, validationResult } = require('express-validator');
 const { query, queryOne, execute, paginate, transaction } = require('../models');
 const { success, error, forbidden } = require('../utils/response');
 const adminAuthMiddleware = require('../middleware/adminAuth');
+const { strictLimiter } = require('../middleware/rateLimiter');
 const { signAdminToken } = require('../utils/jwt');
 const dayjs = require('dayjs');
 
@@ -20,6 +21,7 @@ const router = express.Router();
  * 管理员登录（独立接口，无需 adminAuth）
  */
 router.post('/login',
+  strictLimiter,
   body('username').notEmpty().withMessage('请输入用户名'),
   body('password').notEmpty().withMessage('请输入密码'),
   async (req, res) => {
@@ -30,39 +32,28 @@ router.post('/login',
 
     const { username, password } = req.body;
 
-    // 查询管理员账号（假设管理员是 users 表中 is_admin=1 或独立的账号）
-    // 为了简化，我们在 users 表中添加 is_admin 字段，但 Schema 中没有定义
-    // 这里使用约定：用户名为 admin 时视为管理员，或使用 users 表中 phone='admin' 的记录
-    // 实际项目中应使用独立的管理员表或 is_admin 字段
+    const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+    if (username !== adminUsername) {
+      return error(res, '用户名或密码错误');
+    }
 
-    // 查找用户名为 admin 的账号（由 init_db.sql 预置）
     const user = await queryOne(
-      `SELECT * FROM users WHERE phone = 'admin' OR nickname = ?`,
-      [username]
+      'SELECT id, password_hash FROM users WHERE phone = ?',
+      [adminUsername]
     );
 
-    if (!user) {
-      return error(res, '管理员账号不存在');
+    if (!user || !user.password_hash) {
+      return error(res, '用户名或密码错误');
     }
 
-    // 只接受 bcrypt 哈希，不允许硬编码或明文密码回退。
-    let isValid = false;
-    if (user.password_hash) {
-      isValid = await bcrypt.compare(password, user.password_hash);
-    } else {
-      // 备用方案：查询 configs 中是否有 admin_password_hash
-      const cfg = await queryOne(`SELECT value FROM configs WHERE \`key\` = 'admin_password_hash'`);
-      if (cfg) {
-        isValid = await bcrypt.compare(password, cfg.value);
-      }
-    }
+    const isValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isValid) {
-      return error(res, '密码错误');
+      return error(res, '用户名或密码错误');
     }
 
-    const token = signAdminToken({ adminId: user.id, username, isAdmin: true });
-    return success(res, { token, username }, '管理员登录成功');
+    const token = signAdminToken({ adminId: user.id, username: adminUsername, isAdmin: true });
+    return success(res, { token, username: adminUsername }, '管理员登录成功');
   }
 );
 

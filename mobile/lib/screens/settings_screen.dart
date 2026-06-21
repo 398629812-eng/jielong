@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
+import 'legal_screen.dart';
 
 /// 设置页面（Settings Screen）
 /// 包含：
@@ -156,8 +157,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing: const Icon(Icons.chevron_right,
                         color: Constants.TEXT_HINT),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('隐私政策页面开发中')),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => LegalScreen.privacy),
                       );
                     },
                   ),
@@ -169,8 +171,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing: const Icon(Icons.chevron_right,
                         color: Constants.TEXT_HINT),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('用户协议页面开发中')),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => LegalScreen.agreement),
                       );
                     },
                   ),

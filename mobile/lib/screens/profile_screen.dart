@@ -7,7 +7,7 @@ import 'history_screens.dart';
 
 /// 个人中心页面（Profile Screen）
 /// 展示用户信息：头像、昵称、金币、累计收益、提示次数
-/// 菜单列表：提现、金币明细、提现记录、联系客服、设置
+/// 菜单列表：提现、金币明细、提现记录、设置
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -167,11 +167,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         context,
                         MaterialPageRoute(
                             builder: (_) => const WithdrawHistoryScreen()));
-                  }),
-                  const Divider(height: 1, indent: 56),
-                  _buildMenuItem(Icons.headset_mic, '联系客服', onTap: () {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(const SnackBar(content: Text('客服功能开发中')));
                   }),
                   const Divider(height: 1, indent: 56),
                   _buildMenuItem(Icons.settings, '设置', onTap: () {

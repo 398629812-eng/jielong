@@ -14,7 +14,6 @@ dependencies:
   shared_preferences: ^2.2.0
   flutter_bloc: ^8.1.0
   flutter_svg: ^2.0.0
-  animated_text_kit: ^4.2.0
   audioplayers: ^5.0.0
   cupertino_icons: ^1.0.2
 
@@ -28,4 +27,3 @@ flutter:
 
   assets:
     - assets/idioms.json
-    - assets/images/

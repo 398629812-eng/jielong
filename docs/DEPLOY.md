@@ -35,9 +35,9 @@ mysql -u root -p jielong < backend/scripts/init_db.sql
 ```
 
 > init_db.sql 已包含：
-> - 8 张数据表（users, gold_records, withdrawals, ad_records, game_records, configs, announcements, admin_users）
+> - 7 张数据表（users, gold_records, withdrawals, ad_records, game_records, configs, announcements）
 > - 初始配置数据（金币比例、广告奖励、提现门槛等）
-> 初始化脚本不会创建固定管理员或测试用户。请在部署后通过受控流程创建账号，禁止使用默认密码。
+> 初始化脚本不会创建固定管理员或测试用户。部署后使用一次性环境变量执行 `npm run create:admin`，禁止使用默认密码。
 > - 示例公告数据
 
 ### 3. 配置环境变量
@@ -58,6 +58,9 @@ DB_NAME=jielong
 JWT_SECRET=your_random_jwt_secret_here_change_in_production
 JWT_EXPIRES_IN=7d
 ADMIN_JWT_SECRET=your_admin_jwt_secret_here_different_from_user
+ADMIN_USERNAME=admin
+CORS_ORIGINS=https://admin.example.com
+TRUST_PROXY=1
 ```
 
 > ⚠️ 生产环境务必修改 JWT_SECRET 和 ADMIN_JWT_SECRET，且两者必须不同！
@@ -67,6 +70,11 @@ ADMIN_JWT_SECRET=your_admin_jwt_secret_here_different_from_user
 ```bash
 cd backend
 npm install
+
+# PowerShell：仅为本次命令临时设置初始密码
+$env:ADMIN_INITIAL_PASSWORD='<至少12位的强密码>'
+npm run create:admin
+Remove-Item Env:ADMIN_INITIAL_PASSWORD
 
 # 开发模式
 npm run dev
@@ -158,49 +166,24 @@ flutter run
 
 ### 2. 修改 API 地址
 
-编辑 `mobile/lib/utils/constants.dart`：
-
-```dart
-const String API_BASE_URL = 'http://your-server-domain:3000/api';
-// 生产环境改为真实域名
-```
+通过构建参数设置服务地址：`--dart-define=API_BASE_URL=https://api.example.com/api`。
 
 ### 3. Android 构建
 
 ```bash
 cd mobile
-flutter build apk --release
+flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com/api
 # 输出：build/app/outputs/flutter-apk/app-release.apk
 ```
 
-### 4. HarmonyOS 构建（需 flutter_harmony 适配）
-
-```bash
-# 确保已安装 flutter_harmony 工具链
-flutter build hap --release
-# 输出：build/harmony/outputs/...
-```
-
-> 鸿蒙构建需要额外的 flutter_harmony 配置，详见 [flutter_harmony 文档](https://gitee.com/openharmony-sig/flutter_harmony)。
-
-### 5. 广告 SDK 接入（生产环境）
+### 4. 广告 SDK 接入（生产环境）
 
 编辑 `mobile/lib/services/ad_service.dart`：
 
-1. 将 `TEST_MODE = false`
-2. 实现 `_showTencentAd()` 方法（优量汇 Android SDK）
-3. 实现 `_showHuaweiAd()` 方法（华为 Ads Kit）
-4. 在 `pubspec.yaml` 中添加对应 SDK 依赖
-
-```yaml
-# 优量汇（Android）
-dependencies:
-  gdt_ads: ^1.0.0
-
-# 华为 Ads Kit（HarmonyOS）
-dependencies:
-  huawei_ads: ^1.0.0
-```
+1. 选择与目标应用商店兼容的广告服务商并完成合同与资质审核。
+2. 在 `AdService` 的适配层实现加载、展示、奖励回调和失败回调。
+3. 使用服务商官方文档指定的依赖版本，不在仓库中保存应用密钥。
+4. 验收完成后使用 `--dart-define=TEST_MODE=false` 构建生产包。
 
 ---
 

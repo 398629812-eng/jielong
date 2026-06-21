@@ -1,8 +1,8 @@
-# 成语接龙休闲游戏 — 项目架构与协调文档
+# 成语接龙休闲游戏 — 系统设计规范
 
 ## 项目概述
 
-一个以成语接龙为核心玩法的休闲益智游戏，通过激励视频广告变现，用户赚取金币后可提现。支持 Android 和 HarmonyOS 双平台。
+一个以成语接龙为核心玩法的休闲益智游戏，当前支持 Android 与 Web 测试运行，包含广告、金币和提现的模拟业务闭环。
 
 ---
 
@@ -10,7 +10,7 @@
 
 ```
 jielong/
-├── AGENT_SPEC.md              # 本文件：协调规范
+├── docs/SYSTEM_SPEC.md        # 本文件：系统设计规范
 ├── README.md                  # 项目总说明
 ├── backend/                   # Node.js + Express + MySQL 后端
 │   ├── package.json
@@ -31,7 +31,7 @@ jielong/
 │       ├── pages/
 │       ├── api/
 │       └── App.tsx
-├── mobile/                    # Flutter 客户端（Android + HarmonyOS）
+├── mobile/                    # Flutter 客户端（Android + Web）
 │   ├── pubspec.yaml
 │   └── lib/
 │       ├── main.dart
@@ -54,10 +54,10 @@ jielong/
 
 | 层级 | 技术选型 | 说明 |
 |------|---------|------|
-| 客户端 | Flutter 3.x | 一套代码覆盖 Android + HarmonyOS (flutter_harmony) |
+| 客户端 | Flutter 3.x | 一套代码覆盖 Android + Web |
 | 后端 | Node.js + Express + MySQL 8.0 | RESTful API，JWT 认证 |
 | 管理后台 | React 18 + Ant Design 5.x | 单页面应用，调用后端 API |
-| 广告 SDK | 优量汇(Android) + 华为 Ads Kit(HarmonyOS) | 激励视频 |
+| 广告适配层 | 当前为可替换的模拟实现 | 激励视频测试流程 |
 | 部署 | 云服务器 + PM2 + Nginx | 标准部署 |
 
 ---
@@ -264,7 +264,7 @@ CREATE TABLE announcements (
 
 ## 各模块职责边界
 
-### Backend Worker (backend/)
+### 后端模块 (backend/)
 - 实现所有 RESTful API
 - MySQL 数据库连接、模型定义、初始化脚本
 - JWT 认证中间件
@@ -272,13 +272,13 @@ CREATE TABLE announcements (
 - 成语验证算法（后端也要有，防客户端伪造）
 - 导出：完整的 Node.js 项目，可 `npm install && npm start` 运行
 
-### Admin Worker (admin/)
+### 管理后台模块 (admin/)
 - React + Ant Design 单页应用
 - 调用 backend API（管理后台前缀）
 - 仪表盘、用户管理、金币流水、提现审核、成语库、配置、公告
 - 导出：完整的 React 项目，可独立运行
 
-### Mobile Worker (mobile/)
+### 客户端模块 (mobile/)
 - Flutter 项目骨架
 - 首页、游戏界面、个人中心、提现、签到、转盘、任务中心
 - HTTP 客户端封装，调用 backend API
@@ -286,7 +286,7 @@ CREATE TABLE announcements (
 - 广告 SDK 接入接口封装（留出插件接口）
 - 导出：Flutter 项目，可 `flutter run` 运行
 
-### Data Worker (shared/)
+### 数据模块 (shared/)
 - 生成 10000+ 成语数据 JSON
 - 每个成语包含：成语、拼音（带声调）、释义、首字拼音、尾字拼音
 - 导出：idioms.json 及生成脚本
