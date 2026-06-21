@@ -1,0 +1,27 @@
+# Secrets and local environment
+**/.env
+**/.env.*
+!**/.env.example
+
+# JavaScript dependencies and build output
+**/node_modules/
+**/dist/
+**/coverage/
+
+# Flutter and Dart generated output
+**/.dart_tool/
+**/.pub-cache/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/build/
+
+# Editors and operating system files
+**/.idea/
+**/*.iml
+**/.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
