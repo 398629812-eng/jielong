@@ -28,9 +28,6 @@ class AuthService extends ChangeNotifier {
   /// 是否已登录（有有效用户数据）
   bool get isLoggedIn => _currentUser != null && _currentUser!.isValid;
 
-  /// 是否为游客登录
-  bool get isGuest => _currentUser?.isGuest ?? true;
-
   /// 获取当前Token（可能为null）
   String? get token => _currentUser?.token;
 
@@ -48,7 +45,12 @@ class AuthService extends ChangeNotifier {
     if (userJson != null && userJson.isNotEmpty) {
       try {
         final userMap = jsonDecode(userJson) as Map<String, dynamic>;
-        _currentUser = User.fromJson(userMap);
+        final restoredUser = User.fromJson(userMap);
+        if (restoredUser.isGuest) {
+          await _prefs?.remove(_userKey);
+          return;
+        }
+        _currentUser = restoredUser;
         // 恢复Token到API服务
         if (_currentUser?.token != null) {
           ApiService().setToken(_currentUser!.token);
@@ -86,29 +88,7 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 游客登录（快速开始，无需输入手机号）
-  /// 调用后端 guest-login 接口，获取临时用户ID和Token
-  Future<User?> guestLogin() async {
-    try {
-      final response = await ApiService().guestLogin();
-      // 后端返回统一格式：{ code: 0, data: { token, user } }
-      final data = response is Map<String, dynamic> ? response : {};
-      final token = data['token'] as String?;
-      final userData = data['user'] as Map<String, dynamic>?;
-      if (token != null && userData != null) {
-        userData['token'] = token;
-        final user = User.fromJson(userData);
-        setUser(user);
-        return user;
-      }
-    } catch (e) {
-      rethrow;
-    }
-    return null;
-  }
-
   /// 手机号+验证码登录
-  /// 登录成功后自动绑定游客数据（如果之前有游客记录）
   Future<User?> phoneLogin(String phone, String code) async {
     try {
       final response = await ApiService().phoneLogin(phone, code);

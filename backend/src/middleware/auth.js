@@ -5,9 +5,10 @@
  */
 
 const { verifyUserToken } = require('../utils/jwt');
-const { unauthorized } = require('../utils/response');
+const { queryOne } = require('../models');
+const { unauthorized, forbidden } = require('../utils/response');
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   // 从请求头提取 Token，格式：Authorization: Bearer <token>
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -20,7 +21,26 @@ function authMiddleware(req, res, next) {
     return unauthorized(res, '登录已过期，请重新登录');
   }
 
-  // 将解码后的用户信息挂载到请求对象，供后续路由读取
+  let account;
+  try {
+    account = await queryOne(
+      'SELECT is_guest, is_banned FROM users WHERE id = ?',
+      [payload.userId]
+    );
+  } catch (err) {
+    return next(err);
+  }
+  if (!account) {
+    return unauthorized(res, '账号不存在，请重新登录');
+  }
+  if (account.is_guest) {
+    return unauthorized(res, '游客登录已停止，请使用手机号登录');
+  }
+  if (account.is_banned) {
+    return forbidden(res, '账号已被封禁');
+  }
+
+  // 仅允许数据库中状态正常的正式账号继续访问。
   req.user = payload;
   next();
 }

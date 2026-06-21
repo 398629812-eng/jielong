@@ -3,6 +3,17 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
 
+class ApiException implements Exception {
+  const ApiException(this.message, {this.statusCode, this.code});
+
+  final String message;
+  final int? statusCode;
+  final int? code;
+
+  @override
+  String toString() => message;
+}
+
 /// HTTP API 封装服务
 /// 封装所有后端 RESTful API 调用，统一处理认证、错误、超时
 /// 所有接口自动附加 Authorization: Bearer <token> Header
@@ -57,6 +68,8 @@ class ApiService {
             onTimeout: () => throw Exception('请求超时，请检查网络连接'),
           );
       return _handleResponse(response);
+    } on ApiException {
+      rethrow;
     } on SocketException {
       throw Exception('网络连接失败，请检查网络设置');
     } catch (e) {
@@ -84,6 +97,8 @@ class ApiService {
             onTimeout: () => throw Exception('请求超时，请检查网络连接'),
           );
       return _handleResponse(response);
+    } on ApiException {
+      rethrow;
     } on SocketException {
       throw Exception('网络连接失败，请检查网络设置');
     } catch (e) {
@@ -107,6 +122,8 @@ class ApiService {
             onTimeout: () => throw Exception('请求超时，请检查网络连接'),
           );
       return _handleResponse(response);
+    } on ApiException {
+      rethrow;
     } on SocketException {
       throw Exception('网络连接失败，请检查网络设置');
     } catch (e) {
@@ -122,41 +139,30 @@ class ApiService {
   ///
   /// 返回 data 字段内容（如果存在），否则返回完整响应
   dynamic _handleResponse(http.Response response) {
-    if (response.statusCode == 401) {
-      // Token 过期，清除登录状态（触发重新登录）
-      throw Exception('登录已过期，请重新登录');
-    }
-    if (response.statusCode == 403) {
-      throw Exception('权限不足，无法访问');
-    }
-    if (response.statusCode == 404) {
-      throw Exception('接口不存在: ${response.statusCode}');
-    }
-    if (response.statusCode >= 500) {
-      throw Exception('服务器错误，请稍后重试 (${response.statusCode})');
-    }
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception('请求失败: ${response.statusCode}');
-    }
-
-    // 解析 JSON 响应体
+    dynamic decoded;
     try {
-      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-
-      // 适配后端统一响应格式
-      if (decoded is Map<String, dynamic> && decoded.containsKey('code')) {
-        final code = decoded['code'] as int? ?? 0;
-        if (code != 0) {
-          final message = decoded['message'] as String? ?? '请求失败 (code: $code)';
-          throw Exception(message);
-        }
-        // 返回 data 字段（如果存在），否则返回完整对象
-        return decoded['data'] ?? decoded;
+      decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    } catch (_) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        throw const ApiException('服务器返回了无法识别的数据');
       }
-      return decoded;
-    } catch (e) {
-      throw Exception('响应解析失败: $e');
     }
+
+    final responseMap = decoded is Map<String, dynamic> ? decoded : null;
+    final businessCode = responseMap?['code'] as int?;
+    final backendMessage = responseMap?['message'] as String?;
+    final isHttpSuccess =
+        response.statusCode >= 200 && response.statusCode < 300;
+
+    if (!isHttpSuccess || (businessCode != null && businessCode != 0)) {
+      throw ApiException(
+        backendMessage ?? '请求失败 (${response.statusCode})',
+        statusCode: response.statusCode,
+        code: businessCode,
+      );
+    }
+
+    return responseMap?['data'] ?? decoded;
   }
 
   // ==================== 认证相关 API ====================
@@ -174,23 +180,10 @@ class ApiService {
     return post('/auth/phone-login', body: {'phone': phone, 'code': code});
   }
 
-  /// 游客登录（无需手机号，生成临时ID）
-  /// POST /api/auth/guest-login
-  /// 返回：{ token, user }
-  Future<dynamic> guestLogin() async {
-    return post('/auth/guest-login');
-  }
-
   /// 微信授权登录（预留接口，实际接入需集成微信SDK）
   /// POST /api/auth/wechat-login
   Future<dynamic> wechatLogin(String wxCode) async {
     return post('/auth/wechat-login', body: {'code': wxCode});
-  }
-
-  /// 游客绑定手机号
-  /// POST /api/auth/bind-phone
-  Future<dynamic> bindPhone(String phone, String code) async {
-    return post('/auth/bind-phone', body: {'phone': phone, 'code': code});
   }
 
   /// 刷新 JWT Token

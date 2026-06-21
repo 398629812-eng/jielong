@@ -20,7 +20,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _totalWithdrawn = 0;
   int _hints = 3;
   String _nickname = '成语达人';
-  bool _isGuest = true;
 
   @override
   void initState() {
@@ -46,7 +45,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _totalWithdrawn = user.totalWithdrawn;
       _hints = user.hints;
       _nickname = user.nickname;
-      _isGuest = user.isGuest;
     }
   }
 
@@ -107,19 +105,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontWeight: FontWeight.bold,
                         color: Colors.white),
                   ),
-                  if (_isGuest) ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text('游客',
-                          style: TextStyle(fontSize: 12, color: Colors.white)),
-                    ),
-                  ],
                   const SizedBox(height: 20),
                   // 数据统计行
                   Row(

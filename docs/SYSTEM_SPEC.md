@@ -177,8 +177,6 @@ CREATE TABLE announcements (
 - `POST /api/auth/send-sms` — 发送手机验证码
 - `POST /api/auth/phone-login` — 手机号验证码登录
 - `POST /api/auth/wechat-login` — 微信授权登录
-- `POST /api/auth/guest-login` — 游客登录（临时ID）
-- `POST /api/auth/bind-phone` — 游客绑定手机号
 - `GET /api/auth/refresh` — 刷新 JWT Token
 
 ### 用户相关

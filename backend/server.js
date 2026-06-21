@@ -24,6 +24,8 @@ const allowedOrigins = (process.env.CORS_ORIGINS ||
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+const isProduction = process.env.NODE_ENV === 'production';
+const loopbackOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/;
 
 if (trustProxyHops > 0) {
   app.set('trust proxy', trustProxyHops);
@@ -37,7 +39,8 @@ app.use(express.urlencoded({ extended: true }));
 // 浏览器客户端只允许来自配置中的可信来源；原生客户端不携带 Origin。
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    const isDevelopmentOrigin = !isProduction && loopbackOriginPattern.test(origin || '');
+    if (!origin || allowedOrigins.includes(origin) || isDevelopmentOrigin) {
       return callback(null, true);
     }
     const err = new Error('Origin not allowed');

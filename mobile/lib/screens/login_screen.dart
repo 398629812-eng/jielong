@@ -6,11 +6,7 @@ import '../utils/validators.dart';
 import 'home_screen.dart';
 
 /// 登录页（Login Screen）
-/// 提供多种登录方式：
-/// 1. 手机号+验证码登录（主要方式）
-/// 2. 游客登录（快速开始，无需输入）
-/// 3. 微信登录（预留接口，按钮灰色占位）
-/// 游客登录后可在个人中心绑定手机号
+/// 提供手机号和验证码登录。
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -138,33 +134,6 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         setState(() {
           _errorText = '登录失败，请重试';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorText = '登录失败: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoggingIn = false;
-      });
-    }
-  }
-
-  /// 游客登录（快速开始）
-  Future<void> _guestLogin() async {
-    setState(() {
-      _isLoggingIn = true;
-      _errorText = null;
-    });
-
-    try {
-      final user = await AuthService().guestLogin();
-      if (user != null && mounted) {
-        _navigateToHome();
-      } else {
-        setState(() {
-          _errorText = '游客登录失败，请重试';
         });
       }
     } catch (e) {
@@ -374,22 +343,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              // 游客登录按钮
-              SizedBox(
-                height: 48,
-                child: TextButton(
-                  onPressed: _isLoggingIn ? null : _guestLogin,
-                  child: Text(
-                    '游客登录（快速开始）',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                      decoration: TextDecoration.underline,
-                      decorationColor: Colors.grey[400],
-                    ),
-                  ),
-                ),
-              ),
               const SizedBox(height: 24),
               // 底部提示
               Center(

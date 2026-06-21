@@ -13,8 +13,8 @@ class LegalScreen extends StatelessWidget {
   static const privacy = LegalScreen(
     title: '隐私政策',
     sections: [
-      LegalSection('信息收集',
-          '为完成登录、保存游戏进度和保障账号安全，应用会处理手机号、设备标识、游戏记录、金币流水和提现申请信息。游客模式不要求提供手机号。'),
+      LegalSection(
+          '信息收集', '为完成登录、保存游戏进度和保障账号安全，应用会处理手机号、设备标识、游戏记录、金币流水和提现申请信息。'),
       LegalSection(
           '信息使用', '上述信息仅用于身份验证、游戏服务、奖励核算、风险控制和问题排查。测试版本不会向真实广告平台或支付平台提交数据。'),
       LegalSection('信息存储', '登录凭证保存在设备安全存储中，业务数据保存在服务端数据库中。运营方应限制后台权限并定期备份。'),

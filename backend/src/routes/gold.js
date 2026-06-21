@@ -9,7 +9,6 @@ const { queryOne, execute, query, transaction } = require('../models');
 const { success, error } = require('../utils/response');
 const authMiddleware = require('../middleware/auth');
 const { grantAdReward } = require('../services/adReward');
-const dayjs = require('dayjs');
 
 const router = express.Router();
 
@@ -113,57 +112,63 @@ router.post('/game-reward', (req, res) => error(
  */
 router.post('/sign-in', async (req, res) => {
   const userId = req.user.userId;
-  const user = await queryOne(
-    `SELECT last_sign_in_date, consecutive_sign_in, gold FROM users WHERE id = ?`,
-    [userId]
-  );
+  const result = await transaction(async (conn) => {
+    const [users] = await conn.execute(
+      `SELECT DATE_FORMAT(last_sign_in_date, '%Y-%m-%d') AS last_sign_in_date,
+              consecutive_sign_in,
+              DATE_FORMAT(CURDATE(), '%Y-%m-%d') AS today,
+              DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '%Y-%m-%d') AS yesterday
+       FROM users WHERE id = ? FOR UPDATE`,
+      [userId]
+    );
+    const user = users[0];
+    if (!user) {
+      return { missing: true };
+    }
+    if (user.last_sign_in_date === user.today) {
+      return { alreadySigned: true };
+    }
 
-  const today = dayjs().format('YYYY-MM-DD');
-  const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+    const [configRows] = await conn.execute(
+      `SELECT value FROM configs WHERE \`key\` = 'sign_in_base'`
+    );
+    const baseGold = configRows.length > 0
+      ? parseInt(configRows[0].value, 10)
+      : 50;
+    const isConsecutive = user.last_sign_in_date === user.yesterday;
+    const consecutive = isConsecutive
+      ? (user.consecutive_sign_in || 0) + 1
+      : 1;
+    const bonus = consecutive % 7 === 0 ? Math.floor(baseGold * 0.5) : 0;
+    const totalGold = baseGold + bonus;
 
-  // 今天已经签过到
-  if (user.last_sign_in_date && dayjs(user.last_sign_in_date).format('YYYY-MM-DD') === today) {
+    await conn.execute(
+      `UPDATE users
+       SET gold = gold + ?, last_sign_in_date = CURDATE(), consecutive_sign_in = ?
+       WHERE id = ?`,
+      [totalGold, consecutive, userId]
+    );
+    await conn.execute(
+      `INSERT INTO gold_records (user_id, amount, type, description)
+       VALUES (?, ?, 'sign_in', ?)`,
+      [userId, totalGold, `每日签到第${consecutive}天 +${totalGold}金币`]
+    );
+
+    return { totalGold, consecutive, isConsecutive, bonus };
+  });
+
+  if (result.missing) {
+    return error(res, '用户不存在，请重新登录');
+  }
+  if (result.alreadySigned) {
     return error(res, '今日已经签到过了');
   }
 
-  // 查询签到基础金币
-  const configRows = await query(`SELECT value FROM configs WHERE \`key\` = 'sign_in_base'`);
-  const baseGold = configRows.length > 0 ? parseInt(configRows[0].value, 10) : 50;
-
-  // 是否连续签到
-  let isConsecutive = false;
-  let consecutive = user.consecutive_sign_in || 0;
-  if (user.last_sign_in_date && dayjs(user.last_sign_in_date).format('YYYY-MM-DD') === yesterday) {
-    isConsecutive = true;
-    consecutive += 1;
-  } else {
-    consecutive = 1;
-  }
-
-  // 连续签到奖励：每连续 7 天额外奖励 50%（简单逻辑）
-  let bonus = 0;
-  if (consecutive % 7 === 0) {
-    bonus = Math.floor(baseGold * 0.5);
-  }
-  const totalGold = baseGold + bonus;
-
-  // 更新用户签到信息
-  await execute(
-    `UPDATE users SET gold = gold + ?, last_sign_in_date = ?, consecutive_sign_in = ? WHERE id = ?`,
-    [totalGold, today, consecutive, userId]
-  );
-
-  await execute(
-    `INSERT INTO gold_records (user_id, amount, type, description)
-     VALUES (?, ?, 'sign_in', ?)`,
-    [userId, totalGold, `每日签到第${consecutive}天 +${totalGold}金币`]
-  );
-
   return success(res, {
-    gold: totalGold,
-    consecutive,
-    isConsecutive,
-    bonus
+    gold: result.totalGold,
+    consecutive: result.consecutive,
+    isConsecutive: result.isConsecutive,
+    bonus: result.bonus
   }, '签到成功');
 });
 

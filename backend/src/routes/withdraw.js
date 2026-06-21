@@ -43,7 +43,7 @@ router.post('/apply',
       return error(res, '用户不存在');
     }
     if (user.is_guest) {
-      return error(res, '游客模式不能提现，请先绑定手机号');
+      return error(res, '当前账号不支持提现，请使用手机号登录');
     }
 
     // 2. 查询提现配置

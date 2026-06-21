@@ -31,6 +31,8 @@ class _RewardsScreenState extends State<RewardsScreen>
   /// 今日是否已签到
   bool _todaySigned = false;
 
+  bool _isSigningIn = false;
+
   /// 连续签到天数
   int _consecutiveDays = 0;
 
@@ -70,12 +72,15 @@ class _RewardsScreenState extends State<RewardsScreen>
       initialIndex: widget.initialTab,
     );
     _tabController.addListener(_onTabChanged);
+    AuthService().userNotifier.addListener(_onUserChanged);
+    _syncSignInState();
     _loadTasks();
   }
 
   @override
   void dispose() {
     _tabController.removeListener(_onTabChanged);
+    AuthService().userNotifier.removeListener(_onUserChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -83,6 +88,30 @@ class _RewardsScreenState extends State<RewardsScreen>
   void _onTabChanged() {
     if (!_tabController.indexIsChanging && _tabController.index == 2) {
       _loadTasks();
+    }
+  }
+
+  void _onUserChanged() => _syncSignInState(notify: true);
+
+  void _syncSignInState({bool notify = false}) {
+    final user = AuthService().currentUser;
+    final parsedDate = DateTime.tryParse(user?.lastSignInDate ?? '');
+    final lastSignIn = parsedDate?.toLocal();
+    final now = DateTime.now();
+    final signedToday = lastSignIn != null &&
+        lastSignIn.year == now.year &&
+        lastSignIn.month == now.month &&
+        lastSignIn.day == now.day;
+
+    void applyState() {
+      _todaySigned = signedToday;
+      _consecutiveDays = user?.consecutiveSignIn ?? 0;
+    }
+
+    if (notify && mounted) {
+      setState(applyState);
+    } else {
+      applyState();
     }
   }
 
@@ -119,7 +148,8 @@ class _RewardsScreenState extends State<RewardsScreen>
 
   /// 签到
   Future<void> _signIn() async {
-    if (_todaySigned) return;
+    if (_todaySigned || _isSigningIn) return;
+    setState(() => _isSigningIn = true);
     try {
       final result = await ApiService().signIn();
       await AuthService().refreshUser();
@@ -138,9 +168,16 @@ class _RewardsScreenState extends State<RewardsScreen>
       _showDoubleDialog();
     } catch (e) {
       if (!mounted) return;
+      await AuthService().refreshUser();
+      if (!mounted) return;
+      _syncSignInState(notify: true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('签到失败: $e')),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isSigningIn = false);
+      }
     }
   }
 
@@ -420,7 +457,7 @@ class _RewardsScreenState extends State<RewardsScreen>
               final isPast = index < _consecutiveDays;
 
               return GestureDetector(
-                onTap: isToday ? _signIn : null,
+                onTap: isToday && !_isSigningIn ? _signIn : null,
                 child: Container(
                   decoration: BoxDecoration(
                     color: isToday
@@ -481,7 +518,7 @@ class _RewardsScreenState extends State<RewardsScreen>
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: _signIn,
+                onPressed: _isSigningIn ? null : _signIn,
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
                   backgroundColor: Constants.PRIMARY_RED,

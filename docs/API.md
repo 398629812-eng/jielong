@@ -55,38 +55,12 @@
 
 ---
 
-### POST /api/auth/guest-login
-游客登录（无需输入，自动生成临时ID）
-
-**响应**
-```json
-{
-  "code": 0,
-  "data": {
-    "token": "eyJhbG...",
-    "user": { "id": 999, "nickname": "游客999", "gold": 0, "hints": 3, "is_guest": true }
-  }
-}
-```
-
----
-
 ### POST /api/auth/wechat-login
 微信授权登录（预留接口，目前返回未实现）
 
 **请求**
 ```json
 { "code": "wx_auth_code" }
-```
-
----
-
-### POST /api/auth/bind-phone
-游客绑定手机号
-
-**请求**
-```json
-{ "phone": "<测试手机号>", "code": "<四位验证码>" }
 ```
 
 ---
@@ -636,4 +610,3 @@
 | 1011 | 同设备多账号检测异常 |
 | 2001 | 验证码错误 |
 | 2002 | 手机号已绑定 |
-| 2003 | 游客模式不能提现 |

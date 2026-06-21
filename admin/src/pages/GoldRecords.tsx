@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Table, Input, Button, Tag, Pagination } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import request from '../api/request';
 
 interface GoldRecord {
@@ -25,7 +26,7 @@ const GoldRecords: React.FC = () => {
   const [inputUserId, setInputUserId] = useState('');
   const [userId, setUserId] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -51,7 +52,12 @@ const GoldRecords: React.FC = () => {
     { title: '金币变动', dataIndex: 'amount', key: 'amount', render: (v: number) => <Tag color={v > 0 ? 'green' : 'red'}>{v > 0 ? '+' : ''}{v}</Tag> },
     { title: '类型', dataIndex: 'type', key: 'type', render: (v: string) => { const i = typeMap[v] || { label: v, color: 'default' }; return <Tag color={i.color}>{i.label}</Tag>; } },
     { title: '说明', dataIndex: 'description', key: 'description' },
-    { title: '时间', dataIndex: 'created_at', key: 'created_at' },
+    {
+      title: '时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (value: string) => dayjs(value).format('YYYY-MM-DD HH:mm:ss'),
+    },
   ];
 
   const handleSearch = () => { setPage(1); setUserId(inputUserId.trim()); };

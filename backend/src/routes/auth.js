@@ -1,6 +1,6 @@
 /**
  * 认证路由（auth.js）
- * 提供：发送验证码、手机号登录、微信登录、游客登录、绑定手机、刷新 Token
+ * 提供：发送验证码、手机号登录、微信登录、刷新 Token
  * 其中短信验证码和微信登录使用模拟接口（实际需接入第三方 SDK）
  */
 
@@ -162,81 +162,6 @@ router.post('/wechat-login', async (req, res) => {
     }
   }, '登录成功');
 });
-
-/**
- * POST /api/auth/guest-login
- * 游客登录：生成临时唯一 ID，创建游客账号
- */
-router.post('/guest-login', async (req, res) => {
-  const guestId = uuidv4();
-
-  const result = await execute(
-    `INSERT INTO users (nickname, is_guest, gold, hints)
-     VALUES (?, 1, 0, 3)`,
-    [`游客${guestId.slice(0, 8)}`]
-  );
-
-  const user = {
-    id: result.insertId,
-    nickname: `游客${guestId.slice(0, 8)}`,
-    gold: 0,
-    hints: 3,
-    is_guest: 1
-  };
-
-  const token = signUserToken({ userId: user.id, isGuest: true });
-
-  return success(res, {
-    token,
-    user: {
-      id: user.id,
-      nickname: user.nickname,
-      gold: user.gold,
-      hints: user.hints,
-      is_guest: 1
-    }
-  }, '游客登录成功');
-});
-
-/**
- * POST /api/auth/bind-phone
- * 游客绑定手机号：将游客账号与手机号关联
- */
-router.post('/bind-phone',
-  authMiddleware,
-  body('phone').isMobilePhone('zh-CN').withMessage('请输入有效的手机号'),
-  body('code').isLength({ min: 4, max: 4 }).isNumeric().withMessage('验证码格式错误'),
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return error(res, errors.array()[0].msg);
-    }
-
-    const { phone, code } = req.body;
-    const userId = req.user.userId;
-
-    // 验证验证码
-    const stored = smsCodeStore.get(phone);
-    if (!stored || stored.code !== code || Date.now() > stored.expires) {
-      return error(res, '验证码错误或已过期', 1001);
-    }
-    smsCodeStore.delete(phone);
-
-    // 检查手机号是否已被其他账号绑定
-    const existing = await queryOne(`SELECT id FROM users WHERE phone = ? AND id != ?`, [phone, userId]);
-    if (existing) {
-      return error(res, '该手机号已被绑定，请直接登录', 1002);
-    }
-
-    // 更新当前用户
-    await execute(
-      `UPDATE users SET phone = ?, is_guest = 0, updated_at = NOW() WHERE id = ?`,
-      [phone, userId]
-    );
-
-    return success(res, null, '手机号绑定成功');
-  }
-);
 
 /**
  * GET /api/auth/refresh
