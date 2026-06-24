@@ -35,7 +35,7 @@ mysql -u root -p jielong < backend/scripts/init_db.sql
 ```
 
 > init_db.sql 已包含：
-> - 7 张数据表（users, gold_records, withdrawals, ad_records, game_records, configs, announcements）
+> - 数据表（users, gold_records, withdrawals, ad_records, game_records, configs, announcements 等）
 > - 初始配置数据（金币比例、广告奖励、提现门槛等）
 > 初始化脚本不会创建固定管理员或测试用户。部署后使用一次性环境变量执行 `npm run create:admin`，禁止使用默认密码。
 > - 示例公告数据
@@ -81,6 +81,7 @@ npm run dev
 
 # 生产模式（使用 PM2）
 npm install -g pm2
+mkdir -p logs
 pm2 start server.js --name "jielong-api"
 pm2 save
 pm2 startup

@@ -15,6 +15,22 @@
 
 ---
 
+## 交付与部署入口
+
+正式交付或部署前，建议先阅读以下文档：
+
+| 文档 | 用途 |
+|------|------|
+| `docs/DEPLOY_TENCENT_CLOUD.md` | 腾讯云生产部署步骤 |
+| `docs/HANDOVER_CHECKLIST.md` | 源码、配置、账号、验收交付清单 |
+| `docs/SECURITY_CHECKLIST.md` | 密钥、隐私、服务器、提现和广告安全检查 |
+| `docs/THIRD_PARTY_INTEGRATION.md` | 短信、广告 SDK、提现通道接入边界 |
+| `docs/DEPLOY.md` | 通用部署说明 |
+
+仓库只提交示例配置文件，不提交真实 `.env`、私钥、短信密钥、广告平台密钥、支付或提现密钥。
+
+---
+
 ## 快速开始
 
 ### 1. 后端服务
@@ -106,7 +122,11 @@ jielong/
 │       └── validate_idioms.py
 └── docs/
     ├── API.md             # 接口详细文档
-    └── DEPLOY.md          # 部署指南
+    ├── DEPLOY.md          # 通用部署指南
+    ├── DEPLOY_TENCENT_CLOUD.md
+    ├── HANDOVER_CHECKLIST.md
+    ├── SECURITY_CHECKLIST.md
+    └── THIRD_PARTY_INTEGRATION.md
 ```
 
 ---
@@ -181,7 +201,7 @@ jielong/
 
 ## 部署指南
 
-详见 `docs/DEPLOY.md`。
+通用部署详见 `docs/DEPLOY.md`。腾讯云生产部署和交付验收详见 `docs/DEPLOY_TENCENT_CLOUD.md` 与 `docs/HANDOVER_CHECKLIST.md`。
 
 ---
 
