@@ -43,6 +43,10 @@ class _RewardsScreenState extends State<RewardsScreen>
   /// 转盘是否正在旋转
   bool _isSpinning = false;
 
+  int _spinRemaining = 0;
+  int _spinDailyLimit = 1;
+  bool _isLoadingSpinStatus = true;
+
   /// 当前旋转角度
   double _rotationAngle = 0;
 
@@ -74,6 +78,7 @@ class _RewardsScreenState extends State<RewardsScreen>
     _tabController.addListener(_onTabChanged);
     AuthService().userNotifier.addListener(_onUserChanged);
     _syncSignInState();
+    _loadSpinStatus();
     _loadTasks();
   }
 
@@ -227,8 +232,26 @@ class _RewardsScreenState extends State<RewardsScreen>
   // ==================== 转盘逻辑 ====================
 
   /// 开始转盘
+  Future<void> _loadSpinStatus() async {
+    if (mounted) {
+      setState(() => _isLoadingSpinStatus = true);
+    }
+    try {
+      final result = await ApiService().getSpinStatus();
+      if (!mounted) return;
+      setState(() {
+        _spinDailyLimit = result['daily_limit'] as int? ?? 1;
+        _spinRemaining = result['remaining'] as int? ?? 0;
+        _isLoadingSpinStatus = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingSpinStatus = false);
+    }
+  }
+
   Future<void> _startSpin() async {
-    if (_isSpinning) return;
+    if (_isSpinning || _spinRemaining <= 0) return;
     setState(() {
       _isSpinning = true;
     });
@@ -238,6 +261,10 @@ class _RewardsScreenState extends State<RewardsScreen>
       await AuthService().refreshUser();
       if (!mounted) return;
       final reward = result['gold'] as int? ?? 0;
+      setState(() {
+        _spinDailyLimit = result['daily_limit'] as int? ?? _spinDailyLimit;
+        _spinRemaining = result['remaining'] as int? ?? 0;
+      });
       final sectorIndex = _spinSectors.indexWhere(
         (sector) => sector['reward'] == reward,
       );
@@ -254,6 +281,8 @@ class _RewardsScreenState extends State<RewardsScreen>
 
       _animateSpin(targetAngle, sector);
     } catch (e) {
+      if (!mounted) return;
+      await _loadSpinStatus();
       if (!mounted) return;
       setState(() {
         _isSpinning = false;
@@ -624,7 +653,10 @@ class _RewardsScreenState extends State<RewardsScreen>
             width: 200,
             height: 56,
             child: ElevatedButton(
-              onPressed: _isSpinning ? null : _startSpin,
+              onPressed:
+                  (_isSpinning || _isLoadingSpinStatus || _spinRemaining <= 0)
+                      ? null
+                      : _startSpin,
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: Constants.PRIMARY_RED,
@@ -641,13 +673,23 @@ class _RewardsScreenState extends State<RewardsScreen>
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Text(
-                      '开始转动',
-                      style: TextStyle(
+                  : Text(
+                      _spinRemaining > 0 ? '开始转盘' : '今日次数已用完',
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _isLoadingSpinStatus
+                ? '正在读取今日次数...'
+                : '今日剩余 $_spinRemaining / $_spinDailyLimit 次',
+            style: const TextStyle(
+              fontSize: 13,
+              color: Constants.TEXT_SECONDARY,
             ),
           ),
           const SizedBox(height: 24),

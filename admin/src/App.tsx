@@ -9,6 +9,7 @@ const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Users = lazy(() => import('./pages/Users'));
 const GoldRecords = lazy(() => import('./pages/GoldRecords'));
+const AdRevenue = lazy(() => import('./pages/AdRevenue'));
 const Withdrawals = lazy(() => import('./pages/Withdrawals'));
 const Idioms = lazy(() => import('./pages/Idioms'));
 const Configs = lazy(() => import('./pages/Configs'));
@@ -34,6 +35,7 @@ const App: React.FC = () => {
           <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
           <Route path="/users" element={<PrivateRoute element={<Users />} />} />
           <Route path="/gold-records" element={<PrivateRoute element={<GoldRecords />} />} />
+          <Route path="/ad-revenue" element={<PrivateRoute element={<AdRevenue />} />} />
           <Route path="/withdrawals" element={<PrivateRoute element={<Withdrawals />} />} />
           <Route path="/idioms" element={<PrivateRoute element={<Idioms />} />} />
           <Route path="/configs" element={<PrivateRoute element={<Configs />} />} />

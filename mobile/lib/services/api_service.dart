@@ -257,6 +257,10 @@ class ApiService {
 
   /// 转盘抽奖
   /// POST /api/gold/spin
+  Future<dynamic> getSpinStatus() async {
+    return get('/gold/spin-status');
+  }
+
   Future<dynamic> spin() async {
     return post('/gold/spin');
   }

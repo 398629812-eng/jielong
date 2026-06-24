@@ -70,6 +70,42 @@ async function buildTaskList(userId) {
   }));
 }
 
+const SPIN_PRIZES = [0, 10, 20, 50, 100, 200, 500, 1000];
+const SPIN_WEIGHTS = [30, 25, 20, 15, 5, 3, 1.5, 0.5];
+const DEFAULT_DAILY_SPIN_LIMIT = 1;
+
+function drawSpinPrize() {
+  const totalWeight = SPIN_WEIGHTS.reduce((a, b) => a + b, 0);
+  let random = Math.random() * totalWeight;
+
+  for (let i = 0; i < SPIN_PRIZES.length; i++) {
+    random -= SPIN_WEIGHTS[i];
+    if (random <= 0) {
+      return SPIN_PRIZES[i];
+    }
+  }
+
+  return 0;
+}
+
+async function getDailySpinLimit(db = query) {
+  const rows = await db(
+    `SELECT value FROM configs WHERE \`key\` = 'spin_daily_limit' LIMIT 1`
+  );
+  const value = rows.length > 0 ? parseInt(rows[0].value, 10) : NaN;
+  return Number.isInteger(value) && value >= 0 ? value : DEFAULT_DAILY_SPIN_LIMIT;
+}
+
+async function getTodaySpinCount(userId, db = query) {
+  const rows = await db(
+    `SELECT COUNT(*) AS cnt
+     FROM gold_records
+     WHERE user_id = ? AND type = 'spin' AND DATE(created_at) = CURDATE()`,
+    [userId]
+  );
+  return parseInt(rows[0].cnt, 10) || 0;
+}
+
 /**
  * POST /api/gold/ad-reward
  * 广告观看完成奖励
@@ -112,6 +148,7 @@ router.post('/game-reward', (req, res) => error(
  */
 router.post('/sign-in', async (req, res) => {
   const userId = req.user.userId;
+
   const result = await transaction(async (conn) => {
     const [users] = await conn.execute(
       `SELECT DATE_FORMAT(last_sign_in_date, '%Y-%m-%d') AS last_sign_in_date,
@@ -177,38 +214,69 @@ router.post('/sign-in', async (req, res) => {
  * 转盘抽奖
  * 返回随机奖励金币（0-1000 之间随机）
  */
+router.get('/spin-status', async (req, res) => {
+  const userId = req.user.userId;
+  const dailyLimit = await getDailySpinLimit();
+  const used = await getTodaySpinCount(userId);
+  const remaining = Math.max(dailyLimit - used, 0);
+
+  return success(res, {
+    daily_limit: dailyLimit,
+    used,
+    remaining
+  });
+});
+
 router.post('/spin', async (req, res) => {
   const userId = req.user.userId;
 
-  // 随机生成 0-1000 的金币（模拟转盘）
-  // 实际业务中可配置转盘奖品池和概率
-  const prizes = [0, 10, 20, 50, 100, 200, 500, 1000];
-  const weights = [30, 25, 20, 15, 5, 3, 1.5, 0.5]; // 权重
-  const totalWeight = weights.reduce((a, b) => a + b, 0);
-  let random = Math.random() * totalWeight;
+  try {
+    const result = await transaction(async (conn) => {
+      const withConn = (sql, params) => conn.execute(sql, params).then(([rows]) => rows);
+      await conn.execute('SELECT id FROM users WHERE id = ? FOR UPDATE', [userId]);
+      const dailyLimit = await getDailySpinLimit(withConn);
+      const used = await getTodaySpinCount(userId, withConn);
 
-  let gold = 0;
-  for (let i = 0; i < prizes.length; i++) {
-    random -= weights[i];
-    if (random <= 0) {
-      gold = prizes[i];
-      break;
+      if (used >= dailyLimit) {
+        return { limited: true };
+      }
+
+      const gold = drawSpinPrize();
+      if (gold > 0) {
+        await conn.execute(
+          `UPDATE users SET gold = gold + ? WHERE id = ?`,
+          [gold, userId]
+        );
+      }
+      await conn.execute(
+        `INSERT INTO gold_records (user_id, amount, type, description)
+         VALUES (?, ?, 'spin', ?)`,
+        [userId, gold, gold > 0 ? `\u8f6c\u76d8\u62bd\u5956 +${gold}\u91d1\u5e01` : '\u8f6c\u76d8\u62bd\u5956 \u8c22\u8c22\u53c2\u4e0e']
+      );
+
+      return {
+        gold,
+        dailyLimit,
+        used: used + 1,
+        remaining: Math.max(dailyLimit - used - 1, 0)
+      };
+    });
+
+    if (result.limited) {
+      return error(res, '\u4eca\u65e5\u8f6c\u76d8\u6b21\u6570\u5df2\u7528\u5b8c\uff0c\u660e\u5929\u518d\u6765\u8bd5\u8bd5');
     }
-  }
 
-  if (gold > 0) {
-    await execute(
-      `UPDATE users SET gold = gold + ? WHERE id = ?`,
-      [gold, userId]
-    );
-    await execute(
-      `INSERT INTO gold_records (user_id, amount, type, description)
-       VALUES (?, ?, 'spin', ?)`,
-      [userId, gold, `转盘抽奖 +${gold}金币`]
-    );
+    return success(res, {
+      gold: result.gold,
+      prize: result.gold > 0 ? `\u83b7\u5f97 ${result.gold} \u91d1\u5e01` : '\u8c22\u8c22\u53c2\u4e0e',
+      daily_limit: result.dailyLimit,
+      used: result.used,
+      remaining: result.remaining
+    }, '\u8f6c\u76d8\u62bd\u5956\u5b8c\u6210');
+  } catch (err) {
+    console.error('\u8f6c\u76d8\u62bd\u5956\u5931\u8d25:', err.message);
+    return error(res, '\u8f6c\u76d8\u62bd\u5956\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5');
   }
-
-  return success(res, { gold, prize: gold > 0 ? `获得 ${gold} 金币` : '谢谢参与' }, '转盘抽奖完成');
 });
 
 // 旧客户端兼容门：提示必须校验服务端 active game 状态。

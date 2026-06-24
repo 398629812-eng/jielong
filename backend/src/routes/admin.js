@@ -10,11 +10,54 @@ const { body, validationResult } = require('express-validator');
 const { query, queryOne, execute, paginate, transaction } = require('../models');
 const { success, error, forbidden } = require('../utils/response');
 const adminAuthMiddleware = require('../middleware/adminAuth');
-const { strictLimiter } = require('../middleware/rateLimiter');
+const { adminLimiter, strictLimiter } = require('../middleware/rateLimiter');
 const { signAdminToken } = require('../utils/jwt');
 const dayjs = require('dayjs');
 
 const router = express.Router();
+
+const AD_PLATFORM_LABELS = {
+  tencent: '优量汇',
+  youlianghui: '优量汇',
+  pangolin: '穿山甲',
+  chuanshanjia: '穿山甲',
+  kuaishou: '快手',
+  baidu: '百度',
+  huawei: '华为',
+  mock: '测试平台',
+  unknown: '未知ADN'
+};
+
+const AD_TYPE_LABELS = {
+  hint: '激励视频',
+  continue: '激励视频',
+  sign_in_double: '激励视频',
+  spin: '激励视频',
+  task: '激励视频',
+  splash: '开屏',
+  interstitial: '插屏全屏',
+  feed: '信息流'
+};
+
+function normalizePlatform(platform) {
+  return (platform || 'unknown').toString().trim().toLowerCase() || 'unknown';
+}
+
+function platformLabel(platform) {
+  const key = normalizePlatform(platform);
+  return AD_PLATFORM_LABELS[key] || platform || '未知ADN';
+}
+
+function adTypeLabel(adType, adFormat) {
+  if (adFormat) {
+    return adFormat;
+  }
+  return AD_TYPE_LABELS[adType] || adType || '未知类型';
+}
+
+function asNumber(value) {
+  return Number(value || 0);
+}
 
 /**
  * POST /api/admin/login
@@ -59,6 +102,7 @@ router.post('/login',
 
 // 以下所有接口需要管理员权限
 router.use(adminAuthMiddleware);
+router.use(adminLimiter);
 
 /**
  * GET /api/admin/dashboard
@@ -231,6 +275,177 @@ router.get('/gold-records', async (req, res) => {
 
   const result = await paginate(baseSql, params, page, pageSize);
   return success(res, result);
+});
+
+router.get('/user-ledger', async (req, res) => {
+  const page = parseInt(req.query.page || '1', 10);
+  const pageSize = parseInt(req.query.pageSize || '20', 10);
+  const keyword = req.query.keyword || '';
+
+  let baseSql = `
+    SELECT
+      u.id,
+      u.phone,
+      u.nickname,
+      u.gold,
+      u.total_withdrawn,
+      u.hints,
+      u.is_guest,
+      u.is_banned,
+      u.created_at,
+      latest.amount AS latest_amount,
+      latest.type AS latest_type,
+      latest.description AS latest_description,
+      latest.created_at AS latest_time,
+      COALESCE(today_gold.today_gold_income, 0) AS today_gold_income,
+      COALESCE(today_ads.today_ad_count, 0) AS today_ad_count,
+      COALESCE(pending_withdrawals.pending_withdraw_count, 0) AS pending_withdraw_count
+    FROM users u
+    LEFT JOIN (
+      SELECT gr.*
+      FROM gold_records gr
+      JOIN (
+        SELECT user_id, MAX(id) AS latest_id
+        FROM gold_records
+        GROUP BY user_id
+      ) t ON t.latest_id = gr.id
+    ) latest ON latest.user_id = u.id
+    LEFT JOIN (
+      SELECT user_id, SUM(amount) AS today_gold_income
+      FROM gold_records
+      WHERE amount > 0 AND DATE(created_at) = CURDATE()
+      GROUP BY user_id
+    ) today_gold ON today_gold.user_id = u.id
+    LEFT JOIN (
+      SELECT user_id, COUNT(*) AS today_ad_count
+      FROM ad_records
+      WHERE DATE(created_at) = CURDATE()
+      GROUP BY user_id
+    ) today_ads ON today_ads.user_id = u.id
+    LEFT JOIN (
+      SELECT user_id, COUNT(*) AS pending_withdraw_count
+      FROM withdrawals
+      WHERE status = 'pending'
+      GROUP BY user_id
+    ) pending_withdrawals ON pending_withdrawals.user_id = u.id
+    WHERE 1=1`;
+  const params = [];
+
+  if (keyword) {
+    baseSql += ` AND (u.phone LIKE ? OR u.nickname LIKE ? OR CAST(u.id AS CHAR) = ?)`;
+    params.push(`%${keyword}%`, `%${keyword}%`, keyword);
+  }
+
+  baseSql += ` ORDER BY u.created_at DESC`;
+
+  const result = await paginate(baseSql, params, page, pageSize);
+  return success(res, result);
+});
+
+router.get('/user-ledger/:id', async (req, res) => {
+  const userId = req.params.id;
+  const page = parseInt(req.query.page || '1', 10);
+  const pageSize = parseInt(req.query.pageSize || '20', 10);
+
+  const user = await queryOne(
+    `SELECT id, phone, nickname, gold, total_withdrawn, hints, is_guest, is_banned, created_at
+     FROM users WHERE id = ?`,
+    [userId]
+  );
+  if (!user) {
+    return error(res, '用户不存在', 404, 404);
+  }
+
+  const records = await paginate(
+    `SELECT id, user_id, amount, type, description, created_at
+     FROM gold_records
+     WHERE user_id = ?
+     ORDER BY created_at DESC, id DESC`,
+    [userId],
+    page,
+    pageSize
+  );
+
+  return success(res, { user, records });
+});
+
+router.get('/ad-revenue', async (req, res) => {
+  const page = parseInt(req.query.page || '1', 10);
+  const pageSize = parseInt(req.query.pageSize || '20', 10);
+  const platform = req.query.platform || '';
+  const adType = req.query.ad_type || '';
+
+  let baseSql = `
+    SELECT
+      ar.id,
+      ar.user_id,
+      COALESCE(NULLIF(u.nickname, ''), u.phone, CONCAT('用户', u.id)) AS username,
+      u.phone,
+      ar.platform,
+      ar.ad_type,
+      ar.ad_format,
+      ar.placement_id,
+      ar.transaction_id,
+      ar.verify_status,
+      COALESCE(ar.revenue, 0) AS revenue,
+      ar.created_at
+    FROM ad_records ar
+    JOIN users u ON u.id = ar.user_id
+    WHERE 1=1`;
+  const params = [];
+
+  if (platform) {
+    baseSql += ` AND ar.platform = ?`;
+    params.push(platform);
+  }
+  if (adType) {
+    baseSql += ` AND ar.ad_type = ?`;
+    params.push(adType);
+  }
+
+  baseSql += ` ORDER BY ar.created_at DESC, ar.id DESC`;
+
+  const result = await paginate(baseSql, params, page, pageSize);
+  result.list = result.list.map((row) => ({
+    ...row,
+    platform_label: platformLabel(row.platform),
+    ad_type_label: adTypeLabel(row.ad_type, row.ad_format),
+    revenue: asNumber(row.revenue)
+  }));
+
+  const summaryRows = await query(
+    `SELECT
+       COALESCE(SUM(revenue), 0) AS total_revenue,
+       COUNT(*) AS total_count
+     FROM ad_records`
+  );
+  const platformRows = await query(
+    `SELECT COALESCE(platform, 'unknown') AS platform,
+            COALESCE(SUM(revenue), 0) AS revenue,
+            COUNT(*) AS count
+     FROM ad_records
+     GROUP BY COALESCE(platform, 'unknown')`
+  );
+
+  const byPlatform = {};
+  for (const row of platformRows) {
+    const key = normalizePlatform(row.platform);
+    byPlatform[key] = {
+      platform: key,
+      label: platformLabel(row.platform),
+      revenue: asNumber(row.revenue),
+      count: Number(row.count || 0)
+    };
+  }
+
+  return success(res, {
+    summary: {
+      total_revenue: asNumber(summaryRows[0]?.total_revenue),
+      total_count: Number(summaryRows[0]?.total_count || 0),
+      by_platform: byPlatform
+    },
+    records: result
+  });
 });
 
 /**

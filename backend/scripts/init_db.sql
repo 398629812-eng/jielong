@@ -73,10 +73,17 @@ CREATE TABLE ad_records (
   user_id INT NOT NULL,
   ad_type VARCHAR(20) NOT NULL,
   platform VARCHAR(20),
+  ad_format VARCHAR(30),
+  placement_id VARCHAR(80),
   transaction_id VARCHAR(255),
+  callback_id VARCHAR(255),
+  verify_status VARCHAR(20) DEFAULT 'mock',
+  revenue DECIMAL(12,6) DEFAULT 0.000000,
   UNIQUE KEY uq_ad_records_transaction_id (transaction_id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_user_id (user_id)
+  INDEX idx_user_id (user_id),
+  INDEX idx_platform_created_at (platform, created_at),
+  INDEX idx_ad_type_created_at (ad_type, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
@@ -172,6 +179,7 @@ INSERT INTO configs (`key`, value) VALUES
 ('game_gold_daily_cap', '1000'),
 ('record_gold_reward', '2000'),
 ('sign_in_base', '50'),
+('spin_daily_limit', '1'),
 ('withdraw_daily_limit', '3'),
 ('ad_test_mode', '1'),
 ('tencent_app_id', '1000000'),

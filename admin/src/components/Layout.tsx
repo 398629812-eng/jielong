@@ -1,24 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { Layout as AntLayout, Menu, Button, Breadcrumb, theme } from 'antd';
+import React, { useState } from 'react';
+import { Layout as AntLayout, Breadcrumb, Button, Menu, theme } from 'antd';
 import {
-  DashboardOutlined,
-  UserOutlined,
-  DollarOutlined,
-  WalletOutlined,
+  BarChartOutlined,
   BookOutlined,
-  SettingOutlined,
-  NotificationOutlined,
+  DashboardOutlined,
   LogoutOutlined,
+  NotificationOutlined,
+  SettingOutlined,
+  UserOutlined,
+  WalletOutlined,
 } from '@ant-design/icons';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { getUsername, logout } from '../utils/auth';
 
 const { Header, Sider, Content } = AntLayout;
 
 const menuItems = [
   { key: '/dashboard', icon: <DashboardOutlined />, label: '仪表盘' },
-  { key: '/users', icon: <UserOutlined />, label: '用户管理' },
-  { key: '/gold-records', icon: <DollarOutlined />, label: '金币流水' },
+  { key: '/users', icon: <UserOutlined />, label: '用户账本' },
+  { key: '/ad-revenue', icon: <BarChartOutlined />, label: '广告收益' },
   { key: '/withdrawals', icon: <WalletOutlined />, label: '提现审核' },
   { key: '/idioms', icon: <BookOutlined />, label: '成语库' },
   { key: '/configs', icon: <SettingOutlined />, label: '系统配置' },
@@ -27,7 +27,8 @@ const menuItems = [
 
 const breadcrumbMap: Record<string, string> = {
   '/dashboard': '仪表盘',
-  '/users': '用户管理',
+  '/users': '用户账本',
+  '/ad-revenue': '广告收益',
   '/gold-records': '金币流水',
   '/withdrawals': '提现审核',
   '/idioms': '成语库',
@@ -45,18 +46,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
 
-  useEffect(() => {
-    // 路由切换时自动高亮对应菜单项
-  }, [location.pathname]);
-
-  const handleMenuClick = ({ key }: { key: string }) => {
-    navigate(key);
-  };
-
-  const breadcrumbItems = [
-    { title: '首页' },
-    { title: breadcrumbMap[location.pathname] || '仪表盘' },
-  ];
+  const title = breadcrumbMap[location.pathname] || '仪表盘';
 
   return (
     <AntLayout style={{ minHeight: '100vh' }}>
@@ -64,10 +54,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         trigger={null}
         collapsible
         collapsed={collapsed}
+        onCollapse={setCollapsed}
         theme="light"
-        style={{
-          boxShadow: '2px 0 8px rgba(0,0,0,0.05)',
-        }}
+        style={{ boxShadow: '2px 0 8px rgba(0,0,0,0.05)' }}
       >
         <div
           style={{
@@ -84,14 +73,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             textOverflow: 'ellipsis',
           }}
         >
-          {collapsed ? '成语' : '成语接龙管理后台'}
+          {collapsed ? '接龙' : '成语接龙管理后台'}
         </div>
         <Menu
           theme="light"
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
-          onClick={handleMenuClick}
+          onClick={({ key }) => navigate(key)}
         />
       </Sider>
       <AntLayout>
@@ -105,9 +94,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
           }}
         >
-          <span style={{ fontSize: 16, fontWeight: 500 }}>
-            {breadcrumbMap[location.pathname] || '仪表盘'}
-          </span>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>{title}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <span style={{ color: '#666' }}>欢迎，{username}</span>
             <Button type="primary" danger icon={<LogoutOutlined />} onClick={logout}>
@@ -118,7 +105,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <Content style={{ margin: '16px' }}>
           <Breadcrumb
             style={{ marginBottom: 16 }}
-            items={breadcrumbItems.map((item) => ({ title: item.title }))}
+            items={[{ title: '首页' }, { title }]}
           />
           <div
             style={{

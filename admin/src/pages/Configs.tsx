@@ -13,6 +13,7 @@ interface ConfigValues {
   game_gold_daily_cap: number;
   record_gold_reward: number;
   sign_in_base: number;
+  spin_daily_limit: number;
 }
 
 const defaultConfigs: ConfigValues = {
@@ -25,6 +26,7 @@ const defaultConfigs: ConfigValues = {
   game_gold_daily_cap: 1000,
   record_gold_reward: 2000,
   sign_in_base: 50,
+  spin_daily_limit: 1,
 };
 
 const configItems = [
@@ -37,6 +39,7 @@ const configItems = [
   { key: 'game_gold_daily_cap', label: '游戏每日金币上限', desc: '每天通过游戏获得金币的上限', min: 0 },
   { key: 'record_gold_reward', label: '纪录刷新奖励', desc: '打破个人纪录时的额外金币奖励', min: 0 },
   { key: 'sign_in_base', label: '签到基础金币', desc: '每日签到获得的基础金币', min: 0 },
+  { key: 'spin_daily_limit', label: '每日转盘次数', desc: '每名用户每天最多可转盘抽奖的次数', min: 0 },
 ] as const;
 
 const Configs: React.FC = () => {
